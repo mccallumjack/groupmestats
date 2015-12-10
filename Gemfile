@@ -1,1 +1,1 @@
-HTTParty
+gem 'httparty'
