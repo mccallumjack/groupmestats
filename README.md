@@ -5,6 +5,6 @@ Simple command line tool for getting stats based from your Groupme groups.
 
 1) Get an access token from [Groupme's Dev Site](https://dev.groupme.com/session/new) and put it in your ENV as GROUPME_ACCESS_TOKEN
 
-2) bundle
+2) Bundle Install
 
-3) run ```ruby stats.rb```
+3) Run ```ruby stats.rb```
