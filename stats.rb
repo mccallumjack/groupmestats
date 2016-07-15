@@ -2,16 +2,17 @@ require 'HTTParty'
 
 ACCESS_TOKEN = ENV['GROUPME_ACCESS_TOKEN']
 # This is the max amount of messages you want to look back in history. I keep it at 2k for speed
-MAX_MESSAGES_FETCHED = 2000
+MAX_MESSAGES_FETCHED = 5000
 
 class Stats
   
   attr_reader :messages, :members, :group_id
-  attr_accessor :messages_by_members, :likes_by_members, :self_likes
+  attr_accessor :messages_by_members, :likes_by_members, :self_likes, :likes_by_member_per_member
 
   def initialize(num, group_id)
     @messages_by_members = Hash.new([])
     @likes_by_members = Hash.new(0)
+    @likes_by_member_per_member = Hash.new({})
     @self_likes = Hash.new(0)
     @group_id = group_id
     @members = Members.new(group_id).members
@@ -21,17 +22,62 @@ class Stats
   end
 
   def user_messages
-    members.each do |member|
-      m = messages.select{|message| message["user_id"] == member["user_id"]}
-      messages_by_members[member] = m
-    end
+    @user_messages ||= 
+      members.each do |member|
+        m = messages.select{|message| message["user_id"] == member["user_id"]}
+        messages_by_members[member] = m
+      end
   end
 
   def user_likes
-    messages.each do |message|
-      message["favorited_by"].each do |fav_user_id|
-        likes_by_members[fav_user_id] += 1
-        self_likes[fav_user_id] += 1 if fav_user_id == message["user_id"]
+    @user_likes ||= 
+      messages.each do |message|
+        message["favorited_by"].each do |fav_user_id|
+          likes_by_members[fav_user_id] += 1
+          self_likes[fav_user_id] += 1 if fav_user_id == message["user_id"]
+          likes_by_member_per_member[fav_user_id] = Hash.new(0) unless likes_by_member_per_member.keys.include?(fav_user_id)
+          likes_by_member_per_member[fav_user_id][message["user_id"]] += 1
+        end
+      end
+  end
+
+  def average_likes_per_member_per_person
+    averages = {}
+    @likes_by_member_per_member.each do |user_id, like_hash|
+      averages[user_id] = {}
+      like_hash.each do |liked_user_id, num_likes|
+        if num_likes.nil? || num_likes == 0 || !user_messages_by_user_id.keys.include?(liked_user_id)
+          next
+        else
+          averages[user_id][liked_user_id] = (num_likes.to_f / user_messages_by_user_id[liked_user_id] * 100).round(2)
+        end
+      end
+    end
+    averages
+  end
+
+  def user_messages_by_user_id
+    @user_messages_by_user_id ||= messages_by_members.map { |k, v| [k["user_id"], v.count] }.to_h
+  end
+
+  def get_name_by_user_id(user_id)
+    members.select{|member| member["user_id"] == user_id}.first["nickname"]
+  end
+
+  def print_average_likes_per_member_per_person
+    puts "Average Likes Per Member Per Person - Who are you the toughest critic of?"
+    puts "(Number of times you like it vs number of posts)"
+
+    members.each do |member|
+      puts
+      member_name = member["nickname"]
+      puts "For #{member_name}: "
+      puts "TOTAL AVERAGE: #{(likes_by_members[member["user_id"]] / (messages.count - messages_by_members[member].count).to_f * 100).round(2)}% of posts"
+      puts
+      next unless average_likes_per_member_per_person[member["user_id"]]
+      average_likes_per_member_per_person[member["user_id"]].each do |liked_member, average|
+        print "-- "
+        puts "#{get_name_by_user_id(liked_member)} - Liked #{average}%"
       end
     end
   end
@@ -89,6 +135,8 @@ class Stats
     print_member_likes
     puts
     print_self_likes
+    puts
+    print_average_likes_per_member_per_person
   end
   
 end
