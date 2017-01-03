@@ -177,7 +177,7 @@ class Stats
 
   def pretty_print(message)
     name = message["name"] || "" 
-    text = message["text"] || ""
+    text = message["text"] || message["attachments"].select{ |a| a["type"] == "image"}.first["url"] || ""
     likes = message["favorited_by"].count || 0
     time = Time.at(message["created_at"])
 
@@ -289,7 +289,7 @@ class Groups
   end
 
   def url
-    "http://api.groupme.com/v3/groups"
+    "https://api.groupme.com/v3/groups"
   end
 
   def list_groups
