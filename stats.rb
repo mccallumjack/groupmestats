@@ -2,10 +2,10 @@ require 'HTTParty'
 
 ACCESS_TOKEN = ENV['GROUPME_ACCESS_TOKEN']
 # This is the max amount of messages you want to look back in history. I keep it at 2k for speed
-MAX_MESSAGES_FETCHED = 5000
+MAX_MESSAGES_FETCHED = 2000
 
 class Stats
-  
+
   attr_reader :messages, :members, :group_id
   attr_accessor :messages_by_members, :likes_by_members, :self_likes, :likes_by_member_per_member
 
@@ -82,6 +82,64 @@ class Stats
     end
   end
 
+  def print_matrix_for_member_network_based_on_percentages
+    puts "Member Matrix - Used for Circos Graph"
+    print 'labels '
+    members.each{ |m| print m["nickname"].gsub(' ','_') + ' ' }
+    puts
+    members.each do |member|
+      print member["nickname"].gsub(' ', '_') + ' '
+      if average_likes_per_member_per_person[member["user_id"]].nil?
+        members.count.times do
+          print "0 "
+        end
+        puts
+      else
+        average_likes_per_member = average_likes_per_member_per_person[member["user_id"]]
+        members.each do |liked_member|
+          if liked_member == member
+            print "0 "
+          elsif average_likes_per_member[liked_member["user_id"]].nil?
+            print "0 "
+          else
+            print average_likes_per_member[liked_member["user_id"]].to_s + " "
+          end
+        end
+        puts
+      end
+    end
+    nil
+  end
+
+  def print_matrix_for_member_network_based_on_gross_numbers
+    puts "Member Matrix - Used for Circos Graph"
+    print 'labels '
+    members.each{ |m| print m["nickname"].gsub(' ','_') + ' ' }
+    puts
+    members.each do |member|
+      print member["nickname"].gsub(' ', '_') + ' '
+      if likes_by_member_per_member[member["user_id"]].nil?
+        members.count.times do
+          print "0 "
+        end
+        puts
+      else
+        likes_per_member = likes_by_member_per_member[member["user_id"]]
+        members.each do |liked_member|
+          if liked_member == member
+            print "0 "
+          elsif likes_per_member[liked_member["user_id"]].nil?
+            print "0 "
+          else
+            print likes_per_member[liked_member["user_id"]].to_s + " "
+          end
+        end
+        puts
+      end
+    end
+    nil
+  end
+
   def print_member_likes
     puts "Total Likes Given"
     members.each do |member|
@@ -137,6 +195,7 @@ class Stats
     print_self_likes
     puts
     print_average_likes_per_member_per_person
+    puts print_matrix_for_member_network_based_on_gross_numbers
   end
   
 end
